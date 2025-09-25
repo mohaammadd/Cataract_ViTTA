@@ -1,0 +1,10 @@
+torch>=2.0.0
+torchvision>=0.15.0
+timm>=0.9.2          # for Video Swin Transformer
+numpy>=1.23
+opencv-python>=4.7.0
+scipy>=1.10
+matplotlib>=3.7
+pandas>=1.5
+scikit-learn>=1.2
+tensorboard>=2.12
