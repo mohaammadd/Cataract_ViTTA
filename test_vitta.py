@@ -37,3 +37,4 @@ def evaluate_with_vitta(model, test_set, source_stats, config, logger):
     logger.logger.info(f"Test-time Adaptation Accuracy = {acc:.4f}")
     logger.log_scalar("tta/accuracy", acc, step=0)
     return acc
+  
