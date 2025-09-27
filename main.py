@@ -1,6 +1,7 @@
 import torch
 import json
 import os
+from torch.utils.data import random_split, DataLoader
 from configs.default_config import CONFIG
 from dataset.cataract_dataset import CataractVideoDataset
 from models.swin_phase import VideoSwinPhaseClassifier
@@ -21,26 +22,38 @@ if __name__ == "__main__":
         json.dump(CONFIG, f, indent=4)
     logger.logger.info(f"Config saved to {config_path}")
 
-    # Load datasets
-    train_set = CataractVideoDataset(CONFIG["train_videos"], CONFIG["train_ann"],
-                                     num_frames=CONFIG["num_frames"], img_size=CONFIG["img_size"], train=True)
-    test_set = CataractVideoDataset(CONFIG["test_videos"], CONFIG["test_ann"],
-                                    num_frames=CONFIG["num_frames"], img_size=CONFIG["img_size"], train=False)
+    # Load training dataset (Center A)
+    full_train = CataractVideoDataset(CONFIG["train_root"],
+                                      num_frames=CONFIG["num_frames"],
+                                      img_size=CONFIG["img_size"],
+                                      train=True)
 
-    num_classes = len(set(train_set.annotations.values()))
+    # Split into train/val
+    val_size = int(0.2 * len(full_train))
+    train_size = len(full_train) - val_size
+    train_set, val_set = random_split(full_train, [train_size, val_size])
+    logger.logger.info(f"Train size: {train_size}, Val size: {val_size}")
+
+    # Load test dataset (Center B)
+    test_set = CataractVideoDataset(CONFIG["test_root"],
+                                    num_frames=CONFIG["num_frames"],
+                                    img_size=CONFIG["img_size"],
+                                    train=False)
+
+    num_classes = len(full_train.phase_to_idx)
     model = VideoSwinPhaseClassifier(num_classes)
 
-    # Training
-    logger.logger.info("==== Training on Center A ====")
-    model = train_model(model, train_set, CONFIG, logger)
+    # Training + validation
+    logger.logger.info("==== Training on Center A (with validation split) ====")
+    model = train_model(model, train_set, val_set, CONFIG, logger)
 
-    # Compute source stats
-    logger.logger.info("==== Precomputing Source Stats ====")
+    # Compute source stats (on training set only)
+    logger.logger.info("==== Precomputing Source Stats (from train set) ====")
     model.eval()
     feats_all = []
     device = CONFIG["device"]
     with torch.no_grad():
-        for videos, _ in torch.utils.data.DataLoader(train_set, batch_size=2):
+        for videos, _ in DataLoader(train_set, batch_size=2):
             videos = videos.to(device)
             _, feats = model(videos)
             feats_all.append(feats)
