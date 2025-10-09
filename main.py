@@ -1,3 +1,4 @@
+
 import torch
 import json
 import os
@@ -9,6 +10,7 @@ from utils.logger import ExperimentLogger
 from utils.seed import set_seed
 from train import train_model
 from test_vitta import evaluate_with_vitta
+from utils.source_stats_io import save_source_stats, load_source_stats
 
 if __name__ == "__main__":
     set_seed(CONFIG["seed"])
@@ -47,6 +49,7 @@ if __name__ == "__main__":
     logger.logger.info("==== Training on Center A (with validation split) ====")
     model = train_model(model, train_set, val_set, CONFIG, logger)
 
+
     # Compute source stats (on training set only)
     logger.logger.info("==== Precomputing Source Stats (from train set) ====")
     model.eval()
@@ -60,6 +63,19 @@ if __name__ == "__main__":
     feats_all = torch.cat(feats_all, dim=0)
     mu_src, var_src = feats_all.mean(0), feats_all.var(0)
     source_stats = {"last": (mu_src, var_src)}
+
+    # Save source stats to both JSON and .pt
+    save_source_stats(
+        source_stats,
+        path_json=os.path.join(logger.log_dir, "source_stats.json"),
+        path_pt=os.path.join(logger.log_dir, "source_stats.pt")
+    )
+
+    # (Optional) To load stats later:
+    # source_stats = load_source_stats(
+    #     path_json=os.path.join(logger.log_dir, "source_stats.json"),
+    #     device=CONFIG["device"]
+    # )
 
     # Test-time adaptation
     logger.logger.info("==== Test-time Adaptation on Center B ====")
