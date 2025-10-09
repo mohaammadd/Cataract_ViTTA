@@ -33,7 +33,11 @@ class ViTTAAdapter:
     # ------------------------------
     def update_stats(self, feats, layer):
         mu = feats.mean(0)
-        var = feats.var(0)
+        # Use unbiased=False to avoid nan for batch size 1
+        if feats.shape[0] == 1:
+            var = torch.zeros_like(mu)
+        else:
+            var = feats.var(0, unbiased=False)
         mu_ema, var_ema = self.ema_stats[layer]
         mu_new = self.alpha * mu + (1 - self.alpha) * mu_ema
         var_new = self.alpha * var + (1 - self.alpha) * var_ema
