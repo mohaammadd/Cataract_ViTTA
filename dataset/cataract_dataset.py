@@ -8,6 +8,23 @@ from PIL import Image
 import warnings
 
 class CataractVideoDataset(Dataset):
+    PHASE_MAP = {
+        "AnteriorChamberFlushing": "FlushingAntibiotic",
+        "TonifyingAntibiotics": "FlushingAntibiotic",
+        "CapsulePolishing": "CortexRemoval",
+        # All other phases map to themselves
+        "ViscoelasticSuction": "ViscoelasticSuction",
+        "Viscoelastic": "Viscoelastic",
+        "Phacoemulsification": "Phacoemulsification",
+        "LensImplantation": "LensImplantation",
+        "IrrigationAspiration": "IrrigationAspiration",
+        "Incision": "Incision",
+        "Idle": "Idle",
+        "Hydrodissection": "Hydrodissection",
+        "CortexRemoval": "CortexRemoval",
+        "Capsulorhexis": "Capsulorhexis",
+    }
+
     def __init__(self, root_dir, num_frames=16, img_size=224, train=True):
         self.samples = []
         self.num_frames = num_frames
@@ -30,13 +47,15 @@ class CataractVideoDataset(Dataset):
                 phase_path = os.path.join(case_path, phase)
                 if not os.path.isdir(phase_path):
                     continue
-                if phase not in self.phase_to_idx:
-                    self.phase_to_idx[phase] = idx
+                # Map phase name to unified label
+                unified_phase = self.PHASE_MAP.get(phase, phase)
+                if unified_phase not in self.phase_to_idx:
+                    self.phase_to_idx[unified_phase] = idx
                     idx += 1
                 for item in os.listdir(phase_path):
                     if item.lower().endswith((".mp4", ".avi", ".mov")):
                         self.samples.append((os.path.join(phase_path, item),
-                                             self.phase_to_idx[phase]))
+                                             self.phase_to_idx[unified_phase]))
 
     def __len__(self):
         return len(self.samples)
