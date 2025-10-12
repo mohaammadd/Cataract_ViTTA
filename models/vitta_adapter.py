@@ -11,7 +11,7 @@ class ViTTAAdapter:
     """
 
     def __init__(self, model, source_stats, lr=1e-5, lambda_cons=0.1, alpha=0.1,
-                 layers=("last",), sampling="random", device="cuda"):
+                 layers=("last",), sampling="random", device="cuda", num_subvideo_frames=8):
         self.model = model
         self.source_stats = source_stats
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
@@ -20,6 +20,7 @@ class ViTTAAdapter:
         self.device = device
         self.layers = layers
         self.sampling = sampling
+        self.num_subvideo_frames = num_subvideo_frames
 
         # Initialize EMA stats for each selected layer
         self.ema_stats = {
@@ -86,11 +87,12 @@ class ViTTAAdapter:
     def sample_views(self, x, num_views=4):
         B, T, C, H, W = x.shape
         views = []
+        n = min(self.num_subvideo_frames, T)
         for _ in range(num_views):
             if self.sampling == "uniform":
-                idx = torch.linspace(0, T - 1, T // 2).long()
+                idx = torch.linspace(0, T - 1, n).long()
             elif self.sampling == "random":
-                idx = torch.sort(torch.randint(0, T, (T // 2,)))[0]
+                idx = torch.sort(torch.randint(0, T, (n,)))[0]
             else:
                 raise ValueError(f"Unknown sampling type: {self.sampling}")
 
@@ -135,6 +137,6 @@ class ViTTAAdapter:
 
         return {
             "total": loss.item(),
-            "align": loss_align.item(),
+            "align": loss_align.item(),      
             "cons": loss_cons.item(),
         }
